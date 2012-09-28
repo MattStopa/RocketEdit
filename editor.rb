@@ -8,7 +8,7 @@ class Buffer
 end
 
 class Editor
-  attr_accessor :offset, :buffer, :previous_x, :previous_y
+  attr_accessor :offset, :buffer
 
   NEW_LINE = 10
   LEFT = Curses::Key::LEFT
@@ -79,7 +79,7 @@ class Editor
 end
 
 class Window
-  attr_accessor :main_window, :buffer
+  attr_accessor :main_window, :buffer, :previous_x, :previous_y
 
   def initialize
     self.main_window = Curses::Window.new( 0, 0, 0, 0)
@@ -135,6 +135,7 @@ class Window
     when :down
       current_y > 52 ? set_position(current_x, 52) : set_position(current_x, current_y + 1)
     end
+    write_status_bar
   end
 
   def backspace
@@ -156,6 +157,7 @@ class Window
       writeln(buffer[current_y])
       move_to_next_line
     end
+    write_status_bar
     set_position(0, 0)
   end
 
@@ -166,7 +168,13 @@ class Window
   end
 
   def set_position(x, y)
+    self.previous_x = current_x
+    self.previous_y = current_y
     main_window.setpos(y, x)
+  end
+
+  def set_to_previous_position
+    set_position(previous_x, previous_y)
   end
 
   private
@@ -176,6 +184,12 @@ class Window
     main_window.addstr(line.split("\n").first)
   end
 
+  def write_status_bar
+    set_position(0, 54)
+    writeln("X: #{previous_x} // Y: #{previous_y}             ")
+    set_to_previous_position
+    main_window.refresh
+  end
 end
 
 Editor.new.run
