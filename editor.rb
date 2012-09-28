@@ -22,31 +22,6 @@ class Editor
     @offset = 0
   end
 
-  def writeln(win, y, line, buffer)
-    return if line == nil
-    special_words = %w(field if else do end def scope)
-    l = buffer.size.to_s.size
-    y = y.to_s
-    (l - y.size ).times { y += ' ' }
-    win.addstr("#{y}|")
-    arr = line.split(' ')
-    spaces = line.split(/[abcdefghijklmnoprstuvwxyz1234567890-_=+]/)
-    arr.each_with_index do |element, index|
-      win.addstr(spaces[index])
-      if element[0] == ':'
-        main_window.color_on(3)
-      elsif element[0] == '"' || element[0] == "'"
-        main_window.color_on(4)
-      elsif special_words.include?(element)
-        main_window.color_on(2)
-      end
-      win.addstr("#{element} ")
-      win.attron(Curses.color_pair(1))
-    end
-  end
-
-
-
   def main_window
     @main_window ||= Window.new
   end
@@ -79,7 +54,7 @@ class Editor
 
 
     while 1
-      key_input =
+      key_input = main_window.get_character
       case key_input
       when NEW_LINE
         main_window.handle_return_key(key_input, buffer)
@@ -131,9 +106,10 @@ class Window
   def current_y
     main_window.cury
   end
+  alias :line_number :current_y
 
   def next_line
-    buffer[current_y]
+    buffer[current_y + 1]
   end
 
   def previous_line
@@ -151,15 +127,13 @@ class Window
   def move(direction)
     case direction
     when :left
-      current_x < 2 ? main_window.setpos(current_y, 0) : main_window.setpos(current_y, current_x - 1)
+      current_x < 2 ? set_position(0, line_number) : set_position(current_x - 1, line_number)
     when :right
-      main_window.setpos(current_y, current_x + 1)
+      set_position(current_x + 1, current_y)
     when :up
-      redraw_screen(main_window, buffer, 0, offset)
-      current_y < 2 ? main_window.setpos(1, current_x) : main_window.setpos(current_y - 1, current_x)
+      current_y < 2 ? set_position(current_x, 0) : set_position(current_x, current_y - 1)
     when :down
-      redraw_screen(main_window, buffer, 0, offset)
-      current_y >= buffer.size ? main_window.setpos(buffer.size, current_x) : main_window.setpos(current_y + 1, current_x)
+      current_y > 52 ? set_position(current_x, 52) : set_position(current_x, current_y + 1)
     end
   end
 
@@ -175,28 +149,28 @@ class Window
   end
 
   def redraw_screen
-    index = 0
+    visible_lines = (0...52)
     old_pos = [current_y, current_x]
-    (0...52).each do |num|
-      set_position(index + 1, 0)
-      main_window.clrtoeol
-      writeln()
-      index += 1
+    visible_lines.each do |num|
+      #move_to_next_line
+      #main_window.clrtoeol
+      #writeln(buffer[current_y])
     end
-    set_position(old_pos.first, old_pos.last)
+    set_position(0, 0)
+  end
+
+  def move_to_next_line
+    set_position(current_x, current_y + 1)
   end
 
   def set_position(x, y)
-    previous_x = current_x
-    previous_y = current_y
-    main_window.setpos(x, y)
+    main_window.setpos(y, x)
   end
 
   private
 
-  def writeln
-    main_window.refresh
-    main_window.addstr("x")
+  def writeln(line)
+    main_window.addstr(line)
   end
 
 end
