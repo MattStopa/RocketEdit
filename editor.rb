@@ -152,15 +152,17 @@ class Window
     visible_lines = (0...52)
     old_pos = [current_y, current_x]
     visible_lines.each do |num|
-      #move_to_next_line
-      #main_window.clrtoeol
-      #writeln(buffer[current_y])
+      main_window.clrtoeol
+      writeln(buffer[current_y])
+      move_to_next_line
     end
     set_position(0, 0)
   end
 
   def move_to_next_line
-    set_position(current_x, current_y + 1)
+    @lines ||= []
+    @lines << current_y
+    set_position(0, current_y + 1)
   end
 
   def set_position(x, y)
@@ -170,7 +172,8 @@ class Window
   private
 
   def writeln(line)
-    main_window.addstr(line)
+    return if line == nil
+    main_window.addstr(line.split("\n").first)
   end
 
 end
