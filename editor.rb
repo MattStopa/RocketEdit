@@ -13,7 +13,7 @@ class Editor
   NEW_LINE = 10
   LEFT = Curses::Key::LEFT
   RIGHT = Curses::Key::RIGHT
-  UP = Curses::Key::UP
+  UP = 259
   DOWN = Curses::Key::DOWN
   BACKSPACE = 127
   DC = Curses::Key::DC
@@ -42,7 +42,7 @@ class Editor
   def load_file
     file = File.open(ARGV.first, 'r')
     while (l = file.gets)
-      main_window.buffer << l
+      main_window.buffer << l.split("\n").first
     end
   end
 
@@ -51,7 +51,6 @@ class Editor
     load_file
 
     main_window.redraw_screen
-
 
     while 1
       key_input = main_window.get_character
@@ -62,7 +61,7 @@ class Editor
         main_window.move(:left)
       when RIGHT
         main_window.move(:right)
-      when UP
+      when 259
         main_window.move(:up)
       when DOWN
         main_window.move(:down)
@@ -71,7 +70,7 @@ class Editor
       when BACKSPACE
         main_window.backspace
       else
-
+        main_window.insert_text(key_input)
       end
     end
     main_window.close
@@ -79,10 +78,10 @@ class Editor
 end
 
 class Window
-  attr_accessor :main_window, :buffer, :previous_x, :previous_y
+  attr_accessor :main_window, :buffer, :previous_x, :previous_y, :debug_line
 
   def initialize
-    self.main_window = Curses::Window.new( 0, 0, 0, 0)
+    self.main_window = Curses::Window.new(0, 0, 0, 0)
     main_window.keypad(true)
   end
 
@@ -149,16 +148,24 @@ class Window
     end
   end
 
+  def insert_text(text)
+    old_pos = [current_x, current_y]
+    buffer[current_y].insert(current_x, text.to_s)
+    redraw_screen
+    set_position(old_pos.first + 1, old_pos.last)
+  end
+
   def redraw_screen
+    main_window.clear
     visible_lines = (0...52)
-    old_pos = [current_y, current_x]
+    old_pos = [current_x, current_y]
     visible_lines.each do |num|
-      main_window.clrtoeol
       writeln(buffer[current_y])
       move_to_next_line
+      main_window.clrtoeol
     end
     write_status_bar
-    set_position(0, 0)
+    set_position(old_pos.first, old_pos.last)
   end
 
   def move_to_next_line
@@ -181,14 +188,15 @@ class Window
 
   def writeln(line)
     return if line == nil
-    main_window.addstr(line.split("\n").first)
+    main_window.addstr(line)
   end
 
   def write_status_bar
     set_position(0, 54)
-    writeln("X: #{previous_x} // Y: #{previous_y}             ")
+    main_window.clrtoeol
+    writeln("Line: #{previous_y + 1} | Column: #{previous_x + 1} | Debug: '#{debug_line}'...             ")
     set_to_previous_position
-    main_window.refresh
+    self.debug_line = ""
   end
 end
 
