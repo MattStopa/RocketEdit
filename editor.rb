@@ -1,10 +1,39 @@
 require 'curses'
 
 class Buffer
-  attr_accessor :buffer
+  attr_accessor :data
 
-  def [](num)
+  def initialize
+    @data = []
   end
+
+  def add_line(line)
+    self.data << line
+  end
+
+  def set_line(line, line_number)
+    self.data[line_number] = line
+  end
+
+  def at(number)
+    data[number]
+  end
+
+  def insert_new_line(y, x)
+    old_line = at(y)
+    line1, line2 = '', nil
+    if(x != 0)
+      line1 = old_line[0...x]
+      line2 = old_line[x..old_line.size]
+      data.insert(y, line1)
+      set_line(line2, y + 1)      
+    else
+      data.insert(y, line1)
+    end
+
+
+  end
+
 end
 
 class Editor
@@ -36,13 +65,14 @@ class Editor
     Curses.noecho()
 
     main_window.color_on(1)
-    main_window.buffer = []
+    main_window.buffer = Buffer.new
   end
 
   def load_file
+    return puts "No file specified" if(ARGV.first.nil?)
     file = File.open(ARGV.first, 'r')
     while (l = file.gets)
-      main_window.buffer << l.split("\n").first
+      main_window.buffer.add_line(l.split("\n").first)
     end
   end
 
@@ -56,7 +86,7 @@ class Editor
       key_input = main_window.get_character
       case key_input
       when NEW_LINE
-        main_window.handle_return_key(key_input, buffer)
+        main_window.handle_return_key(key_input)
       when LEFT
         main_window.move(:left)
       when RIGHT
@@ -85,11 +115,11 @@ class Window
     main_window.keypad(true)
   end
 
-  def handle_return_key(key_input, buffer)
+  def handle_return_key(key_input)
     if key_input == 10
-      buffer.insert(main_window.cury, '')
+      buffer.insert_new_line(main_window.cury, current_x)
       old_pos = [main_window.cury, current_x]
-      redraw_screen(main_window, buffer)
+      redraw_screen
       main_window.setpos(old_pos.first + 1, old_pos.last)
     end
   end
@@ -150,7 +180,11 @@ class Window
 
   def insert_text(text)
     old_pos = [current_x, current_y]
-    buffer[current_y].insert(current_x, text.to_s)
+    old_string = buffer.at(current_y)
+    old_string += " " * (current_x - old_string.size) if(old_string.size < current_x)
+    new_string = old_string.insert(current_x, text.to_s)
+    buffer.set_line(new_string, current_y) 
+
     redraw_screen
     set_position(old_pos.first + 1, old_pos.last)
   end
@@ -160,7 +194,7 @@ class Window
     visible_lines = (0...52)
     old_pos = [current_x, current_y]
     visible_lines.each do |num|
-      writeln(buffer[current_y])
+      writeln(buffer.at(current_y))
       move_to_next_line
       main_window.clrtoeol
     end
@@ -192,11 +226,11 @@ class Window
   end
 
   def write_status_bar
-    set_position(0, 54)
-    main_window.clrtoeol
-    writeln("Line: #{previous_y + 1} | Column: #{previous_x + 1} | Debug: '#{debug_line}'...             ")
-    set_to_previous_position
-    self.debug_line = ""
+    # set_position(0, 54)
+    # main_window.clrtoeol
+    # writeln("Line: #{previous_y + 1} | Column: #{previous_x + 1} | Debug: '#{debug_line}'...             ")
+    # set_to_previous_position
+    # self.debug_line = ""
   end
 end
 
